@@ -1,70 +1,189 @@
-﻿using AutoMapper;
-using Microsoft.AspNetCore.Mvc;
-using PhonebookApi.Data;
-using PhonebookApi.Dtos;
+﻿using Microsoft.AspNetCore.Mvc;
 using PhonebookApi.Models;
+using PhonebookApi.Repositories.Interfaces;
 
 namespace PhonebookApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class PeopleController : ControllerBase
+    public class PersonController : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly IMapper _mapper;
+        private readonly IPersonRepository _personRepository;
 
-        public PeopleController(AppDbContext context, IMapper mapper)
+        public PersonController(IPersonRepository personRepository)
         {
-            _context = context;
-            _mapper = mapper;
+            _personRepository = personRepository;
         }
 
+        // GET: api/person
         [HttpGet]
-        public ActionResult<IEnumerable<PersonDto>> GetPeople()
+        public async Task<ActionResult<List<Person>>> GetAllPersons()
         {
-            var people = _context.People.ToList();
-            return Ok(_mapper.Map<List<PersonDto>>(people));
+            try
+            {
+                var persons = await _personRepository.GetAllAsync();
+                return Ok(persons);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
+        // GET: api/person/5
         [HttpGet("{id}")]
-        public ActionResult<PersonDto> GetPerson(int id)
+        public async Task<ActionResult<Person>> GetPerson(int id)
         {
-            var person = _context.People.Find(id);
-            if (person == null) return NotFound();
-            return Ok(_mapper.Map<PersonDto>(person));
+            try
+            {
+                if (id <= 0)
+                {
+                    return BadRequest("Invalid person ID");
+                }
+
+                var person = await _personRepository.GetByIdAsync(id);
+
+                if (person == null)
+                {
+                    return NotFound($"Person with ID {id} not found");
+                }
+
+                return Ok(person);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
+        // POST: api/person
         [HttpPost]
-        public ActionResult<PersonDto> CreatePerson(CreatePersonDto createDto)
+        public async Task<ActionResult<Person>> CreatePerson([FromBody] Person person)
         {
-            var person = _mapper.Map<Person>(createDto);
-            _context.People.Add(person);
-            _context.SaveChanges();
+            try
+            {
+                if (person == null)
+                {
+                    return BadRequest("Person data is required");
+                }
 
-            var personDto = _mapper.Map<PersonDto>(person);
-            return CreatedAtAction(nameof(GetPerson), new { id = personDto.Id }, personDto);
+                if (string.IsNullOrWhiteSpace(person.FullName))
+                {
+                    return BadRequest("Full name is required");
+                }
+
+                if (string.IsNullOrWhiteSpace(person.PhoneNumber))
+                {
+                    return BadRequest("Phone number is required");
+                }
+
+                // ID'yi sıfırla çünkü veritabanı tarafından otomatik olarak atanacak
+                person.Id = 0;
+
+                await _personRepository.AddAsync(person);
+                var saved = await _personRepository.SaveChangesAsync();
+
+                if (!saved)
+                {
+                    return StatusCode(500, "Failed to save person to database");
+                }
+
+                return CreatedAtAction(nameof(GetPerson), new { id = person.Id }, person);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
+        // PUT: api/person/5
         [HttpPut("{id}")]
-        public IActionResult UpdatePerson(int id, UpdatePersonDto updateDto)
+        public async Task<IActionResult> UpdatePerson(int id, [FromBody] Person person)
         {
-            var person = _context.People.Find(id);
-            if (person == null) return NotFound();
+            try
+            {
+                if (id <= 0)
+                {
+                    return BadRequest("Invalid person ID");
+                }
 
-            _mapper.Map(updateDto, person);
-            _context.SaveChanges();
-            return NoContent();
+                if (person == null)
+                {
+                    return BadRequest("Person data is required");
+                }
+
+                if (id != person.Id)
+                {
+                    return BadRequest("ID mismatch between URL and request body");
+                }
+
+                if (string.IsNullOrWhiteSpace(person.FullName))
+                {
+                    return BadRequest("Full name is required");
+                }
+
+                if (string.IsNullOrWhiteSpace(person.PhoneNumber))
+                {
+                    return BadRequest("Phone number is required");
+                }
+
+                var existingPerson = await _personRepository.GetByIdAsync(id);
+                if (existingPerson == null)
+                {
+                    return NotFound($"Person with ID {id} not found");
+                }
+
+                // Mevcut kişinin bilgilerini güncelle
+                existingPerson.FullName = person.FullName;
+                existingPerson.PhoneNumber = person.PhoneNumber;
+
+                _personRepository.Update(existingPerson);
+                var saved = await _personRepository.SaveChangesAsync();
+
+                if (!saved)
+                {
+                    return StatusCode(500, "Failed to update person in database");
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
+        // DELETE: api/person/5
         [HttpDelete("{id}")]
-        public IActionResult DeletePerson(int id)
+        public async Task<IActionResult> DeletePerson(int id)
         {
-            var person = _context.People.Find(id);
-            if (person == null) return NotFound();
+            try
+            {
+                if (id <= 0)
+                {
+                    return BadRequest("Invalid person ID");
+                }
 
-            _context.People.Remove(person);
-            _context.SaveChanges();
-            return NoContent();
+                var person = await _personRepository.GetByIdAsync(id);
+                if (person == null)
+                {
+                    return NotFound($"Person with ID {id} not found");
+                }
+
+                _personRepository.Delete(person);
+                var saved = await _personRepository.SaveChangesAsync();
+
+                if (!saved)
+                {
+                    return StatusCode(500, "Failed to delete person from database");
+                }
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
     }
 }
