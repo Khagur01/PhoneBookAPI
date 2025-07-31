@@ -2,6 +2,7 @@ using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using PhonebookApi.Data;
 using PhonebookApi.Mapping;
+using PhonebookApi.Middleware; // Error handling middleware için
 using PhonebookApi.Repositories;
 using PhonebookApi.Repositories.Interfaces;
 
@@ -47,10 +48,8 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
         // Veritabanýný oluþtur (eðer yoksa)
         context.Database.EnsureCreated();
-
         Console.WriteLine("Database successfully created/updated!");
     }
     catch (Exception ex)
@@ -60,9 +59,43 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// HTTP pipeline
-app.UseSwagger();
-app.UseSwaggerUI();
+// HTTP Pipeline - ÖNEMLÝ: Sýralama çok önemli!
+
+// 1. Error handling middleware (EN ÜSTTE OLMALI)
+app.UseErrorHandling();
+
+// 2. Development environment için detaylý hata sayfasý
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage(); // Bu artýk middleware tarafýndan handle ediliyor ama yine de ekleyelim
+}
+
+// 3. HTTPS redirection
+app.UseHttpsRedirection();
+
+// 4. Swagger (sadece development'ta)
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Phonebook API V1");
+        c.RoutePrefix = string.Empty; // Swagger'ý root'ta açar (https://localhost:xxxx/)
+    });
+}
+
+// 5. Authentication & Authorization (gelecekte eklenebilir)
+app.UseAuthentication(); // Þimdilik boþ ama yapý hazýr
 app.UseAuthorization();
+
+// 6. Controllers
 app.MapControllers();
+
+// 7. Fallback route (opsiyonel)
+app.MapFallback(async context =>
+{
+    context.Response.StatusCode = 404;
+    await context.Response.WriteAsync("Endpoint not found");
+});
+
 app.Run();
