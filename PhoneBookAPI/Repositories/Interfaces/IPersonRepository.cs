@@ -1,4 +1,4 @@
-﻿using PhonebookApi.Models;
+﻿using PhoneBookAPI.Data;
 
 namespace PhonebookApi.Repositories.Interfaces
 {

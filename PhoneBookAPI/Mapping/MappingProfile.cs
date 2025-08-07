@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using PhonebookApi.Dtos;
-using PhonebookApi.Models;
+using PhoneBookAPI.Data;
 
 namespace PhonebookApi.Mapping
 {

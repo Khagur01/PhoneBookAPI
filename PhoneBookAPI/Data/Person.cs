@@ -1,4 +1,4 @@
-﻿namespace PhonebookApi.Models
+﻿namespace PhoneBookAPI.Data
 {
     public class Person
     {
