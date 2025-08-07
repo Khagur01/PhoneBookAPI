@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using PhonebookApi.Models;
+using PhoneBookAPI.Data;
 
 namespace PhonebookApi.Data
 {

@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using PhonebookApi.Models;
 using PhonebookApi.Repositories.Interfaces;
+using PhoneBookAPI.Data;
 
 namespace PhonebookApi.Controllers
 {

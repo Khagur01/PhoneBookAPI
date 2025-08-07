@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PhonebookApi.Data;
-using PhonebookApi.Models;
 using PhonebookApi.Repositories.Interfaces;
+using PhoneBookAPI.Data;
 
 namespace PhonebookApi.Repositories
 {
